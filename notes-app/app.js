@@ -1,13 +1,12 @@
 const validator = require('validator');
-const chalk = require('chalk')
+const chalk = require('chalk');
 
-const getNotes = require('./notes.js');
+const command = process.argv[2];
 
-const msg = getNotes();
+if (command === 'add') {
+  console.log('Adding note.');
+} else if (command === 'remove') {
+  console.log('Removing note.');
+}
 
-console.log(msg);
-
-console.log(validator.isEmail('tcc@email.com'));
-
-const greenMsg = chalk.bold.green('Success!')
-console.log(greenMsg)
+console.log(process.argv);
