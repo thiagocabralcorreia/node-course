@@ -2,7 +2,7 @@ const yargs = require('yargs');
 const validator = require('validator');
 const notes = require('./notes');
 
-// Costumize yargs version
+// Customize yargs version
 yargs.version('1.1.0');
 
 // Create add command
