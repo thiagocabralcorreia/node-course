@@ -14,8 +14,41 @@ const User = require("./models/User");
 
 // Open Route / Public Route
 app.get("/", (req, res) => {
-  res.status(200).json({ msg: "Welcome!" });
+  return res.status(200).json({ msg: "Welcome!" });
 });
+
+// Private Route
+app.get("/user/:id", checkToken, async (req, res) => {
+  const id = req.params.id;
+
+  // Check if user exists
+  const user = await User.findById(id, "-password");
+
+  if (!user) {
+    return res.status(404).json({ msg: "User not found." });
+  }
+
+  return res.status(200).json({ user });
+});
+
+function checkToken(req, res, next) {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1]; // token
+  // If "Bearer saSkjhASakj", so authHeader.split(" ")[1] = saSkjhASakj
+
+  if (!token) {
+    return res.status(401).json({ msg: "Access denied." });
+  }
+
+  try {
+    const secret = process.env.SECRET;
+
+    jwt.verify(token, secret);
+    next();
+  } catch (error) {
+    return res.status(404).json({ msg: "Invalid token." });
+  }
+}
 
 // Register
 app.post("/auth/register", async (req, res) => {
@@ -23,24 +56,27 @@ app.post("/auth/register", async (req, res) => {
 
   // Validations
   if (!name) {
-    res.status(422).json({ msg: "Invalid name." });
+    return res.status(422).json({ msg: "Invalid name." });
+    // 422:  the server can't process your request, although it understands it
   }
   if (!email) {
-    res.status(422).json({ msg: "Invalid email." });
+    return res.status(422).json({ msg: "Invalid email." });
   }
   if (!password) {
-    res.status(422).json({ msg: "Invalid password." });
+    return res.status(422).json({ msg: "Invalid password." });
   }
 
   if (password !== confirmpassword) {
-    res.status(422).json({ msg: "The passwords do not match." });
+    return res.status(422).json({ msg: "The passwords do not match." });
   }
 
   // Check if the user already exists
   const userExists = await User.findOne({ email: email });
 
   if (userExists) {
-    res.status(422).json({ msg: "A user with this email already exists." });
+    return res
+      .status(422)
+      .json({ msg: "A user with this email already exists." });
   }
 
   // Create password
@@ -57,10 +93,53 @@ app.post("/auth/register", async (req, res) => {
   try {
     await user.save();
 
-    res.status(201).json({ msg: "User created successfully!" });
+    return res.status(201).json({ msg: "User created successfully!" });
   } catch (error) {
     console.log(error);
-    res.status(500).json({
+    return res.status(500).json({
+      msg: "An error occurred on the server. Please try again later.",
+    });
+  }
+});
+
+// Login
+app.post("/auth/login", async (req, res) => {
+  const { email, password } = req.body;
+
+  // Validations
+  if (!email) {
+    return res.status(422).json({ msg: "Invalid email." });
+    // 422:  the server can't process your request, although it understands it
+  }
+  if (!password) {
+    return res.status(422).json({ msg: "Invalid password." });
+  }
+
+  // Check if the user exists
+  const user = await User.findOne({ email: email });
+  if (!user) {
+    return res.status(404).json({ msg: "User not found." });
+  }
+
+  // Check if the password matches
+  const checkPassword = await bcrypt.compare(password, user.password);
+  if (!checkPassword) {
+    return res.status(404).json({ msg: "Invalid password." });
+  }
+
+  try {
+    const secret = process.env.SECRET;
+    const token = jwt.sign(
+      {
+        id: user._id,
+      },
+      secret
+    );
+
+    return res.status(201).json({ msg: "Authentication successful", token });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
       msg: "An error occurred on the server. Please try again later.",
     });
   }
